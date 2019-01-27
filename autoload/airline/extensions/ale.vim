@@ -1,6 +1,7 @@
 
 
 scriptencoding utf-8
+"let g:airline#extensions#ale#distinct_style_problem_parts = 1
 
 function! s:airline_ale_count(cnt, symbol)
   return a:cnt ? a:symbol. a:cnt : ''
@@ -85,8 +86,17 @@ function! s:get_problem_count(counts, problem_type, sub_type)
     if a:sub_type ==# 'style'
         return a:counts["style_" . a:problem_type]
     else
+      if get(g:, 'airline#extensions#ale#distinct_style_problem_parts', 0)
+        " Get the counts ONLY for the exact problem type and sub type being
+        " requested.
+        let l:ale_count_key = (a:sub_type ==# 'style') ?
+          \ 'style_' . a:problem_type : a:problem_type
+        return a:counts[l:ale_count_key]
+      else
+        " Get the counts of all problems of the requested type.
         let l:errors = a:counts.error + a:counts.style_error
         return (a:problem_type ==# 'error') ? l:errors : a:counts.total - l:errors
+      endif
     endif
 
   endif
