@@ -154,7 +154,8 @@ function! airline#init#bootstrap()
   call airline#parts#define_empty(['hunks', 'branch', 'obsession', 'tagbar',
         \ 'syntastic-warn', 'syntastic-err', 'eclim', 'whitespace','windowswap',
         \ 'ycm_error_count', 'ycm_warning_count', 'neomake_error_count',
-        \ 'neomake_warning_count', 'ale_error_count', 'ale_warning_count',
+        \ 'neomake_warning_count', 'ale_style_error_count', 'ale_error_count',
+        \ 'ale_style_warning_count', 'ale_warning_count',
         \ 'languageclient_error_count', 'languageclient_warning_count'])
   call airline#parts#define_text('capslock', '')
   call airline#parts#define_text('gutentags', '')
