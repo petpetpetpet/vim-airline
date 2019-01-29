@@ -399,13 +399,13 @@ ale <https://github.com/w0rp/ale>
 * ale error_symbol >
   let g:airline#extensions#ale#error_symbol = 'E:'
 <
-* ale warning >
+* ale warning symbol >
   let g:airline#extensions#ale#warning_symbol = 'W:'
 <
-* ale style warning >
+* ale style warning symbol >
   let g:airline#extensions#ale#style_warning_symbol = 'S:'
 <
-* ale style error >
+* ale style error symbol >
   let g:airline#extensions#ale#style_error_symbol = 'S:'
 <
 * ale show_line_numbers >
@@ -420,50 +420,66 @@ ale <https://github.com/w0rp/ale>
 * ale distinguish style problems >
   let g:airline#extensions#ale#distinct_style_problem_parts = 0
 <
+* ale use old problem prioritisation (see below) >
+  let g:airline#extensions#ale#use_old_prioritisation = 0
+<
 
-The order in which error and style warnings are prioritised in their parts
-is dependent on:
+The order in which problems (error, warning) and style problems (style error,
+style warning) are prioritised for display is dependent on:
 
 * The version of ALE that is installed.
-* Whether g:airline#extensions#ale#distinct_style_problem_parts is set to 1
+* Whether `g:airline#extensions#ale#distinct_style_problem_parts` is set to 1
   or 0.
 
-For ALE versions 2.3 and lower, the standard behaviour is for the problem
-part to display the first problem in the buffer, irrespective of whether
-it is a style problem or not. For example, if you have a style error at
-line 2, and a proper error at line 3, the error part will display the style
-error. This has always been the behaviour of this plugin. The only difference
-now is that it will show the style problem symbol when applicable.
+The behaviour of the extension when `distinct_style_problem_parts = 0` can be
+summed up as follows:
 
-For newer version of ALE, this extension will distinguish between normal
-problems and style problems dependent on the `distinguish_style_problems`
-directive. Thus:
+* IF ALEVERSION > 2.3: Non-style errors will be displayed first, in order of
+  their appearance in the buffer. Once they have all been fixed, style errors
+  will be shown in order of their appearance in the buffer (likewise for
+  warnings.)
 
-* default behaviour: Error count will be equal to (num_errors + 
-  num_style_errors). Likewise for warnings. The `ale_error_count` part will
-  display the line number of the first normal error. If there are no errors
-  it will display the first style error. Likewise for warnings.
+* IF 2.0 <= ALEVERSION <= 2.3: The first problem (style or otherwise) in the
+  buffer is shown. It will be decorated with the appropriate symbol.
+  Historically, that is what this extension has always done, but without the
+  capability to indicate whether the displayed problem was a style type.
+  If you have a newer version and, for some reason, prefer this prioritisation
+  , you force it to be used by setting:
+  `g:airline#extensions#ale#use_old_prioritisation = 1`. NB: The old algorithm
+  is less efficient.
 
-* distinct_style_problem_parts = 1: The error section will only display
-  non-style errors (counts and line numbers.) Likewise for warnings. The
-  anticipated use case for this setting would be where someone wants to
-  add distinct style error and style warning parts to their
-  `airline_error_section` (or warning section.) In that case one could
-  add `ale_style_error_count` to their error section, and 
-  `ale_style_warning_count` to their warning section and be able to see
-  the style problems alongside the regular ones.
+* IF ALEVERSION < 2.0: The first error (style or otherwise) in the buffer is
+  shown. No distinction is made between style and non-style problems. Likewise
+  for warnings.
+
+Only the two `ale_error_count` and `ale_warning_count` sections should be used
+in this case. These are present by default in vim-airline.
+
+If `g:airline#extensions#ale#distinct_style_problem_parts = 1`:
+
+The error section `ale_error_count` will only display non-style errors.
+Likewise for warnings (in `ale_warning_count`). There are style specific
+sections that can be used with this setting: 'ale_style_error_count', and
+'ale_style_warning_count'.
+ 
+The anticipated use case for this setting would be where one wants to add
+distinct style error and style warning parts to their `g:airline_error_section`
+(and/or warning section.) That would allow them to see both style and
+non-style problems side-by side.
 
 Here is an example vimrc airline config that would show style and normal
-problems side-by-side in their respective parts (Note: If you define any
-section variables it will replace the default values entirely.):
+problems side-by-side in their respective parts:
 >
   let g:airline#extensions#ale#distinct_style_problem_parts = 1
-  let g:airline_section_error = 
-    \"%{airline#extensions#ale#get_style_errors()} " .
-    \"%{airline#extensions#ale#get_errors()}"
-  let g:airline_section_warning = 
-    \"%{airline#extensions#ale#get_style_warnings()} " . 
-    \"%{airline#extensions#ale#get_warnings()}"
+  function! AirlineInit()
+    let g:airline_section_error = airline#section#create([
+      \'ale_style_error_count',
+      \'ale_error_count'])
+    let g:airline_section_warning = airline#section#create([
+      \'ale_style_warning_count',
+      \'ale_warning_count'])
+  endfunction
+  autocmd User AirlineAfterInit call AirlineInit()
 <
 -------------------------------------                       *airline-branch*
 vim-airline will display the branch-indicator together with the branch name in
