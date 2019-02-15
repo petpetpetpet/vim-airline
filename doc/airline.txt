@@ -418,7 +418,8 @@ ale <https://github.com/w0rp/ale>
   let g:airline#extensions#ale#close_lnum_symbol = ')'
 <
 * ale distinguish style problems >
-  let g:airline#extensions#ale#distinct_style_problem_parts = 0
+  let g:airline#extensions#ale#distinct_style_errors = 0
+  let g:airline#extensions#ale#distinct_style_warnings = 0
 <
 * ale use old problem prioritisation (see below) >
   let g:airline#extensions#ale#use_old_prioritisation = 0
@@ -428,10 +429,11 @@ The order in which problems (error, warning) and style problems (style error,
 style warning) are prioritised for display is dependent on:
 
 * The version of ALE that is installed.
-* Whether `g:airline#extensions#ale#distinct_style_problem_parts` is set to 1
-  or 0.
+* Whether `g:airline#extensions#ale#distinct_style_errors` and/or
+  `g:airline#extensions#ale#distinct_style_warnings` are set to 1 or 0.
+  I'll refer to these two settings collectively as: `style distinctiveness`
 
-The behaviour of the extension when `distinct_style_problem_parts = 0` can be
+The behaviour of the extension when `style distinctiveness` is disabled can be
 summed up as follows:
 
 * IF ALEVERSION > 2.3: Non-style errors will be displayed first, in order of
@@ -443,10 +445,9 @@ summed up as follows:
   buffer is shown. It will be decorated with the appropriate symbol.
   Historically, that is what this extension has always done, but without the
   capability to indicate whether the displayed problem was a style type.
-  If you have a newer version and, for some reason, prefer this prioritisation
-  , you force it to be used by setting:
-  `g:airline#extensions#ale#use_old_prioritisation = 1`. NB: The old algorithm
-  is less efficient.
+  If you have a newer version and, for some reason, prefer the older
+  prioritisation method, you can force it to be used by setting:
+  `g:airline#extensions#ale#use_old_prioritisation = 1`
 
 * IF ALEVERSION < 2.0: The first error (style or otherwise) in the buffer is
   shown. No distinction is made between style and non-style problems. Likewise
@@ -455,29 +456,31 @@ summed up as follows:
 Only the two `ale_error_count` and `ale_warning_count` sections should be used
 in this case. These are present by default in vim-airline.
 
-If `g:airline#extensions#ale#distinct_style_problem_parts = 1`:
+The `style distinctiveness` settings have the following effect:
 
-The error section `ale_error_count` will only display non-style errors.
-Likewise for warnings (in `ale_warning_count`). There are style specific
-sections that can be used with this setting: 'ale_style_error_count', and
-'ale_style_warning_count'.
- 
-The anticipated use case for this setting would be where one wants to add
+If `g:airline#extensions#ale#distinct_style_errors = 1` , the error section
+`ale_error_count` will only display non-style errors. The behaviour for
+`g:airline#extensions#ale#distinct_style_warnings = 1` is the same (the
+non-style displaying section being `ale_warning_count` of course). Data for
+style warnings and errors can be retrieved from their respective sections:
+`ale_style_error_count`, and `ale_style_warning_count`.
+
+The anticipated use case for these settings would be where one wants to add
 distinct style error and style warning parts to their `g:airline_error_section`
 (and/or warning section.) That would allow them to see both style and
 non-style problems side-by side.
 
-Here is an example vimrc airline config that would show style and normal
-problems side-by-side in their respective parts:
+For example, here is an example vimrc airline config that would show style and
+normal errors separate-but-side-by-side in their respective parts, while using
+a single part to show BOTH style and normal warnings.
 >
-  let g:airline#extensions#ale#distinct_style_problem_parts = 1
+  " Instruct the extension to use a separate section for style errors.
+  let g:airline#extensions#ale#distinct_style_errors = 1
   function! AirlineInit()
+    " Put the style error specific section in the airline error section.
     let g:airline_section_error = airline#section#create([
       \'ale_style_error_count',
       \'ale_error_count'])
-    let g:airline_section_warning = airline#section#create([
-      \'ale_style_warning_count',
-      \'ale_warning_count'])
   endfunction
   autocmd User AirlineAfterInit call AirlineInit()
 <
@@ -1187,7 +1190,7 @@ virtualenv <https://github.com/jmcantrell/vim-virtualenv>
   " (see above at g:airline#extensions#whitespace#checks)
   " To disable mixed-indent-file for go files use:
   let g:airline#extensions#whitespace#skip_indent_check_ft = {'go': ['mixed-indent-file']}
-<  
+<
 -------------------------------------                   *airline-windowswap*
 vim-windowswap <https://github.com/wesQ3/vim-windowswap>
 

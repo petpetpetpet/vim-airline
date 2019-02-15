@@ -1,48 +1,26 @@
 " MIT License. Copyright (c) 2013-2019 Bjorn Neergaard, w0rp, petpetpetpet
 " et al.
 " vim: et ts=2 sts=2 sw=2
-"
-" Global config vars used in this module (and their default values):
-"
-" These control the string that will decorate the line number. E.g: if the
-" line number was 12, the default vals would return '(L12)'
-" 
-" * g:airline#extensions#ale#open_lnum_symbol = '(L'
-" * g:airline#extensions#ale#close_lnum_symbol = ')'
-"
-" Controls whether style problems are returned when airline#extensions#ale#get
-" is called with a problem_type parameter of 'error' (likewise for for
-" warnings.) More detail in doc/airline.txt in the airline-ale section.
-"
-" * g:airline#extensions#ale#distinct_style_problem_parts = 0
-"
-" Controls the string that decorates the problem counts. For example, if there
-" are 12 errors, you would get 'E:12'.
-" 
-" * g:airline#extensions#ale#error_symbol = 'E:'
-" * g:airline#extensions#ale#warning_symbol = 'W:'
-" * g:airline#extensions#ale#style_error_symbol = 'S:'
-" * g:airline#extensions#ale#style_warning_symbol = 'S:'
-"
-" Controls the string that is displayed when ALE is still asynchronously
-" checking for problems.
-" 
-" * g:airline#extensions#ale#checking_symbol = '...'
-"
-" If 1, line numbers are displayed.
-" 
-" * g:airline#extensions#ale#show_line_numbers = 1
-"
-" Force the extension to use the old get_line_data function:
-" g:airline#extensions#ale#use_old_prioritisation = 0
 
 scriptencoding utf-8
+
+function! s:treat_distinct(problem_type)
+  " Determines whether problems matching problem_type should be
+  " distinguished from their style subtypes.
+  if a:problem_type is# 'error'
+    return get(g:, 'airline#extensions#ale#distinct_style_errors', 0)
+  endif
+
+  return get(g:, 'airline#extensions#ale#distinct_style_warnings', 0)
+endfunction
 
 function! s:decorate_ale_count(cnt, symbol)
   return a:cnt ? a:symbol . a:cnt : ''
 endfunction
 
 function! s:decorate_line_num(lnum)
+  " Pre and appends the open_lnum_symbol and close_lnum_symbol
+  " to the lnum result.
 
   let l:open_lnum_symbol  = get(
     \g:,
@@ -112,16 +90,10 @@ endfunction
 
 function! s:new_airline_ale_get_line_data(problem_type, sub_type) abort
   " Chooses the appropriate getFirstProblem function based on
-  " the airline#extensions#ale#distinct_style_problem_parts setting.
+  " the treat_distinct setting.
   let l:buf = bufnr('')
 
-  if exists('g:Airline#extensions#ale#LineDataFunc')
-    " If the user provided a custom processing function, use it.
-    return call(g:Airline#extensions#ale#LineDataFunc,
-               \[l:buf, a:problem_type, a:sub_type])
-  endif
-
-  if get(g:, 'airline#extensions#ale#distinct_style_problem_parts', 0)
+  if s:treat_distinct(a:problem_type)
     return airline#extensions#ale#line_data_exact(l:buf, a:problem_type, a:sub_type)
   endif
 
@@ -132,8 +104,8 @@ function! s:airline_ale_get_line_data(problem_type, sub_type) abort
   " In order to maintain backwards compatibility with older versions of ALE,
   " we first check whether ALE exposes the FirstIssue function. If so, use it.
   " Otherwise fall back to the old way of pulling line numbers.
-  if !exists("*ale#statusline#FirstProblem") || 
-      \get(g:, 'airline#extensions#ale#use_old_prioritisation', 0)
+  if !exists("*ale#statusline#FirstProblem") ||
+      \ get(g:, 'airline#extensions#ale#use_old_prioritisation', 0)
     return s:old_airline_ale_get_line_data(a:problem_type, a:sub_type)
   endif
 
@@ -143,19 +115,19 @@ endfunction
 function! s:get_problem_count(counts, problem_type, sub_type)
   if type(a:counts) == type({})
     " Use the current Dictionary format.
-    if a:sub_type ==# 'style'
+    if a:sub_type is# 'style'
         return a:counts["style_" . a:problem_type]
     else
-      if get(g:, 'airline#extensions#ale#distinct_style_problem_parts', 0)
+      if s:treat_distinct(a:problem_type)
         " Get the counts ONLY for the exact problem type and sub type being
         " requested.
-        let l:ale_count_key = (a:sub_type ==# 'style') ?
+        let l:ale_count_key = (a:sub_type is# 'style') ?
           \ 'style_' . a:problem_type : a:problem_type
         return a:counts[l:ale_count_key]
       else
         " Get the counts of all problems of the requested type.
         let l:errors = a:counts.error + a:counts.style_error
-        return (a:problem_type ==# 'error') ? l:errors :
+        return (a:problem_type is# 'error') ? l:errors :
           \a:counts.total - l:errors
       endif
     endif
@@ -163,7 +135,7 @@ function! s:get_problem_count(counts, problem_type, sub_type)
   endif
 
   " Older versions of ALE returned the problem counts in a 2-element array.
-  return = (a:problem_type ==# 'error') ? counts[0] : counts[1]
+  return = (a:problem_type is# 'error') ? counts[0] : counts[1]
 endfunction
 
 function! s:get_problem_symbol(problem_type, sub_type)
@@ -181,15 +153,15 @@ function! s:get_problem_symbol(problem_type, sub_type)
     \'airline#extensions#ale#style_warning_symbol',
     \'S:')
 
-  if a:sub_type ==# 'style'
+  if a:sub_type is# 'style'
 
-    if a:problem_type ==# 'E'
+    if a:problem_type is# 'E'
       return l:style_error_symbol
     else
       return l:style_warning_symbol
     endif
 
-  elseif a:problem_type ==# 'E'
+  elseif a:problem_type is# 'E'
     return l:error_symbol
   endif
 
@@ -197,6 +169,13 @@ function! s:get_problem_symbol(problem_type, sub_type)
 endfunction
 
 function! airline#extensions#ale#get(problem_type, sub_type)
+  " Returns a formatted string containing:
+  "
+  " 1. The number of problems of the specified type.
+  " 2. Optionally, the line number of the first such problem.
+  "
+  " The return value of this function is used to populate
+  " airline parts pertaining to errors and warnings.
   if !exists(':ALELint')
     return ''
   endif
@@ -222,8 +201,8 @@ function! airline#extensions#ale#get(problem_type, sub_type)
   " Ask ale for the number of problems it found.
   let l:counts = ale#statusline#Count(l:cur_buffer)
   if type(l:counts) != type({})
-    " If the result is not a dict, then ALE is a super old version that
-    " cannot support problem subtypes. (old version of the Count API
+    " If the result is not a dict, then ALE is a super old version (< 2.0)
+    " that cannot support problem subtypes. (old version of the Count API
     " function returned an array. The current version returns a
     " dictionary.)
     let a:sub_type = ''
@@ -238,13 +217,11 @@ function! airline#extensions#ale#get(problem_type, sub_type)
   if l:num > 0 && l:show_line_numbers
     let l:line_data = s:airline_ale_get_line_data(a:problem_type, a:sub_type)
     if !empty(l:line_data) && has_key(l:line_data, 'lnum')
-      " Depending on the configuration (especially if
-      " distinct_style_problem_parts = 0) the line returned by ALE might not
-      " match the a:sub_type we asked for. (e.g: maybe we ask for
-      " problem_type=error, sub_type='' and the returned line_data has a
-      " style subtype.)
-      " We hande that case by simply decorating the line based on the
-      " *actual* returned sub_type.
+      " If one of the style distinctiveness settings are off, then the sub
+      " type of the line returned from airline_ale_get_line_data might be
+      " different than a:sub_type. This code ensures that when we are showing
+      " line numbers, that we use the returned sub type to construct the
+      " part contents, *not* a:sub_type.
       let l:returned_type_code = get(l:line_data, 'type', '')
       let l:returned_sub_type = get(l:line_data, 'sub_type', '')
       let l:line_num_str = s:decorate_line_num(l:line_data.lnum)
@@ -255,15 +232,15 @@ function! airline#extensions#ale#get(problem_type, sub_type)
     \l:returned_type_code,
     \l:returned_sub_type)
 
-  " Return value always includes a count.
-  let l:return_value = s:decorate_ale_count(l:num, l:symbol)
+  " The part always includes a count...
+  let l:part_contents = s:decorate_ale_count(l:num, l:symbol)
 
   " And might also include line numbers
   if l:show_line_numbers == 1
-    let l:return_value .= l:line_num_str
+    let l:part_contents .= l:line_num_str
   endif
 
-  return l:return_value
+  return l:part_contents
 endfunction
 
 function! airline#extensions#ale#get_style_warnings()
